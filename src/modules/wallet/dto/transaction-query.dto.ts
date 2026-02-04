@@ -1,14 +1,28 @@
 import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TransactionType } from '../../../shared/enums/transaction-type.enum';
 
 export class TransactionQueryDto {
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Numero da pagina',
+    minimum: 1,
+    default: 1,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  @ApiPropertyOptional({
+    example: 20,
+    description: 'Itens por pagina',
+    minimum: 1,
+    maximum: 100,
+    default: 20,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -16,6 +30,10 @@ export class TransactionQueryDto {
   @Max(100)
   limit?: number = 20;
 
+  @ApiPropertyOptional({
+    enum: TransactionType,
+    description: 'Filtrar por tipo de transacao',
+  })
   @IsOptional()
   @IsEnum(TransactionType)
   type?: TransactionType;

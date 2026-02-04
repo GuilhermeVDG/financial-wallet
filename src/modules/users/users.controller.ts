@@ -1,8 +1,15 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import {
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(
@@ -11,6 +18,16 @@ export class UsersController {
   ) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'Criar usuario',
+    description:
+      'Registra um novo usuario com saldo inicial opcional e retorna JWT para uso imediato.',
+  })
+  @ApiCreatedResponse({
+    description:
+      'Usuario criado com sucesso. Retorna dados do usuario e access_token.',
+  })
+  @ApiConflictResponse({ description: 'Email ja cadastrado.' })
   async create(@Body() dto: CreateUserDto) {
     const user = await this.usersService.create(dto);
 

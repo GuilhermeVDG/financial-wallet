@@ -14,8 +14,12 @@ services:
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_NAME=${DB_NAME:-financial_wallet}
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE:-wallet_events}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -26,6 +30,27 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: financial-wallet-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    networks:
+      - financial-wallet-network
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   postgres:
     image: postgres:16-alpine
@@ -50,6 +75,8 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+  rabbitmq_data:
     driver: local
 
 networks:

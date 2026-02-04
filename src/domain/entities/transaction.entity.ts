@@ -22,7 +22,13 @@ export class Transaction {
   @Column({ type: 'enum', enum: TransactionType })
   type: TransactionType;
 
-  @Column({ type: 'decimal', precision: 15, scale: 2 })
+  @Column({
+    type: 'bigint',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string | number) => parseInt(String(value), 10),
+    },
+  })
   amount: number;
 
   @Column({ name: 'related_user_id', type: 'uuid', nullable: true })

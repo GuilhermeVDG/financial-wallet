@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -23,9 +23,7 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const balanceInCents = dto.balance
-      ? Math.round(dto.balance * 100)
-      : 0;
+    const balanceInCents = dto.balance ? Math.round(dto.balance * 100) : 0;
 
     const user = this.userRepository.create({
       name: dto.name,

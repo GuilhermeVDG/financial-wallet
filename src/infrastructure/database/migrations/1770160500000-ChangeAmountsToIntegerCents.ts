@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class ChangeAmountsToIntegerCents1770160500000
-  implements MigrationInterface
-{
+export class ChangeAmountsToIntegerCents1770160500000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Convert balance from decimal (reais) to bigint (centavos)
     await queryRunner.query(

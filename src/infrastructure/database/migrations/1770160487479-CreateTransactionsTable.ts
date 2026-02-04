@@ -6,9 +6,7 @@ import {
   TableIndex,
 } from 'typeorm';
 
-export class CreateTransactionsTable1770160487479
-  implements MigrationInterface
-{
+export class CreateTransactionsTable1770160487479 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TYPE "transaction_type_enum" AS ENUM('DEPOSIT', 'TRANSFER', 'REVERSAL')`,

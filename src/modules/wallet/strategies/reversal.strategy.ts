@@ -151,14 +151,42 @@ export class ReversalStrategy implements TransactionStrategy {
       );
     }
 
-    // Lock users in deterministic order to prevent deadlocks
-    const senderId = original.userId;
-    const recipientId = original.relatedUserId;
+    const isDebitSide = original.relatedTransactionId === null;
+
+    let debitTransaction: Transaction;
+    let creditTransaction: Transaction | null;
+
+    if (isDebitSide) {
+      debitTransaction = original;
+      creditTransaction =
+        await this.transactionRepository.findRelatedTransferTransaction(
+          original.id,
+          queryRunner,
+        );
+    } else {
+      creditTransaction = original;
+      debitTransaction = await this.transactionRepository.findByIdWithLock(
+        original.relatedTransactionId!,
+        queryRunner,
+      );
+
+      if (!debitTransaction) {
+        throw new NotFoundException('Original debit transaction not found');
+      }
+
+      if (debitTransaction.status === TransactionStatus.REVERSED) {
+        throw new ConflictException('Transaction has already been reversed');
+      }
+    }
+
+    const originalSenderId = debitTransaction.userId;
+    const originalReceiverId =
+      creditTransaction?.userId || debitTransaction.relatedUserId!;
 
     const [firstId, secondId] =
-      senderId < recipientId
-        ? [senderId, recipientId]
-        : [recipientId, senderId];
+      originalSenderId < originalReceiverId
+        ? [originalSenderId, originalReceiverId]
+        : [originalReceiverId, originalSenderId];
 
     const firstUser = await this.userWalletRepository.findByIdWithLock(
       firstId,
@@ -169,92 +197,81 @@ export class ReversalStrategy implements TransactionStrategy {
       queryRunner,
     );
 
-    const sender = firstId === senderId ? firstUser : secondUser;
-    const recipient = firstId === recipientId ? firstUser : secondUser;
+    const sender = firstId === originalSenderId ? firstUser : secondUser;
+    const receiver = firstId === originalReceiverId ? firstUser : secondUser;
 
-    if (!sender || !recipient) {
+    if (!sender || !receiver) {
       throw new NotFoundException('One of the users involved was not found');
     }
 
-    // Reverse: give money back to sender, take from recipient
     const newSenderBalance = sender.balance + amount;
-    const newRecipientBalance = recipient.balance - amount;
+    const newReceiverBalance = receiver.balance - amount;
 
     await this.userWalletRepository.updateBalance(
-      senderId,
+      originalSenderId,
       newSenderBalance,
       queryRunner,
     );
 
     await this.userWalletRepository.updateBalance(
-      recipientId,
-      newRecipientBalance,
+      originalReceiverId,
+      newReceiverBalance,
       queryRunner,
     );
 
-    // Mark original debit transaction as reversed
     await this.transactionRepository.updateStatus(
-      original.id,
+      debitTransaction.id,
       TransactionStatus.REVERSED,
       queryRunner,
     );
 
-    // Find and mark the related credit transaction as reversed
-    const relatedCreditTransaction =
-      await this.transactionRepository.findRelatedTransferTransaction(
-        original.id,
-        queryRunner,
-      );
-
-    if (relatedCreditTransaction) {
+    if (creditTransaction) {
       await this.transactionRepository.updateStatus(
-        relatedCreditTransaction.id,
+        creditTransaction.id,
         TransactionStatus.REVERSED,
         queryRunner,
       );
     }
 
-    // Create reversal record for sender (money returned)
     const senderReversalData = this.transactionFactory.createReversal({
-      userId: senderId,
+      userId: originalSenderId,
       amount,
-      originalTransactionId: original.id,
-      relatedUserId: recipientId,
-      description: `Reversal of transfer ${original.id}`,
+      originalTransactionId: debitTransaction.id,
+      relatedUserId: originalReceiverId,
+      description: `Reversal of transfer ${debitTransaction.id}`,
     });
     const senderReversal = await this.transactionRepository.create(
       senderReversalData,
       queryRunner,
     );
 
-    // Create reversal record for recipient (money taken back)
-    const recipientReversalData = this.transactionFactory.createReversal({
-      userId: recipientId,
+    const receiverReversalData = this.transactionFactory.createReversal({
+      userId: originalReceiverId,
       amount,
-      originalTransactionId: relatedCreditTransaction?.id || original.id,
-      relatedUserId: senderId,
-      description: `Reversal of transfer ${original.id}`,
+      originalTransactionId: creditTransaction?.id || debitTransaction.id,
+      relatedUserId: originalSenderId,
+      description: `Reversal of transfer ${debitTransaction.id}`,
     });
-    const recipientReversal = await this.transactionRepository.create(
-      recipientReversalData,
+    const receiverReversal = await this.transactionRepository.create(
+      receiverReversalData,
       queryRunner,
     );
 
     return {
-      transactions: [senderReversal, recipientReversal],
+      transactions: [senderReversal, receiverReversal],
       events: [
         {
           event: WalletEvent.REVERSAL_COMPLETED,
           timestamp: new Date().toISOString(),
           data: {
             senderReversalId: senderReversal.id,
-            recipientReversalId: recipientReversal.id,
-            originalTransactionId: original.id,
-            senderId,
-            recipientId,
+            receiverReversalId: receiverReversal.id,
+            originalTransactionId: debitTransaction.id,
+            originalSenderId,
+            originalReceiverId,
             amount,
             newSenderBalance,
-            newRecipientBalance,
+            newReceiverBalance,
           },
         },
       ],

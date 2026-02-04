@@ -26,18 +26,12 @@ export class WalletController {
   }
 
   @Post('deposit')
-  deposit(
-    @Request() req: { user: { id: string } },
-    @Body() dto: DepositDto,
-  ) {
+  deposit(@Request() req: { user: { id: string } }, @Body() dto: DepositDto) {
     return this.walletService.deposit(req.user.id, dto);
   }
 
   @Post('transfer')
-  transfer(
-    @Request() req: { user: { id: string } },
-    @Body() dto: TransferDto,
-  ) {
+  transfer(@Request() req: { user: { id: string } }, @Body() dto: TransferDto) {
     return this.walletService.transfer(req.user.id, dto);
   }
 

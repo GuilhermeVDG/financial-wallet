@@ -268,7 +268,7 @@ docker compose exec api npm run test:e2e
 
 ## 📊 Coverage
 
-
+<img width="805" height="222" alt="Captura de Tela 2026-02-05 às 11 24 34" src="https://github.com/user-attachments/assets/ce8b1e32-409a-4e5d-b998-ed227e90427c" />
 
 **Resumo:**
 

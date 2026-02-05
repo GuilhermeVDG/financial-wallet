@@ -5,7 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../../domain/entities/user.entity';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
@@ -111,6 +111,42 @@ describe('AuthService', () => {
       await expect(service.login(loginDto)).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('getMe', () => {
+    it('should return user profile with balance in reais', async () => {
+      const user: User = {
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'hashedpassword',
+        balance: 150000,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
+        transactions: [],
+      };
+
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(user);
+
+      const result = await service.getMe('1');
+
+      expect(userRepository.findOne).toHaveBeenCalledWith({
+        where: { id: '1' },
+      });
+      expect(result).toEqual({
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+        balance: 1500,
+        createdAt: user.createdAt,
+      });
+    });
+
+    it('should throw NotFoundException if user not found', async () => {
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.getMe('999')).rejects.toThrow(NotFoundException);
     });
   });
 });

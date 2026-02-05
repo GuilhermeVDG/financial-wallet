@@ -15,7 +15,7 @@ import { ReversalStrategy } from './strategies/reversal.strategy';
 import { DepositDto } from './dto/deposit.dto';
 import { TransferDto } from './dto/transfer.dto';
 import { Transaction } from '../../domain/entities/transaction.entity';
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { User } from '../../domain/entities/user.entity';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 
@@ -23,18 +23,21 @@ describe('WalletService', () => {
   let service: WalletService;
   let depositStrategy: DepositStrategy;
   let transferStrategy: TransferStrategy;
+  let reversalStrategy: ReversalStrategy;
   let userWalletRepository: IUserWalletRepository;
   let transactionRepository: ITransactionRepository;
+  let eventPublisher: WalletEventPublisher;
+  let queryRunner: Record<string, jest.Mock>;
 
   beforeEach(async () => {
-    const queryRunner = {
+    queryRunner = {
       connect: jest.fn(),
       startTransaction: jest.fn(),
       commitTransaction: jest.fn(),
       rollbackTransaction: jest.fn(),
       release: jest.fn(),
       manager: {},
-    } as unknown as QueryRunner;
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -54,7 +57,7 @@ describe('WalletService', () => {
         { provide: WalletEventPublisher, useValue: { publish: jest.fn() } },
         { provide: DepositStrategy, useValue: { execute: jest.fn() } },
         { provide: TransferStrategy, useValue: { execute: jest.fn() } },
-        { provide: ReversalStrategy, useValue: {} },
+        { provide: ReversalStrategy, useValue: { execute: jest.fn() } },
         {
           provide: DataSource,
           useValue: {
@@ -67,12 +70,14 @@ describe('WalletService', () => {
     service = module.get<WalletService>(WalletService);
     depositStrategy = module.get<DepositStrategy>(DepositStrategy);
     transferStrategy = module.get<TransferStrategy>(TransferStrategy);
+    reversalStrategy = module.get<ReversalStrategy>(ReversalStrategy);
     userWalletRepository = module.get<IUserWalletRepository>(
       USER_WALLET_REPOSITORY,
     );
     transactionRepository = module.get<ITransactionRepository>(
       TRANSACTION_REPOSITORY,
     );
+    eventPublisher = module.get<WalletEventPublisher>(WalletEventPublisher);
   });
 
   it('should be defined', () => {
@@ -112,7 +117,7 @@ describe('WalletService', () => {
   });
 
   describe('getBalance', () => {
-    it('should return the user balance', async () => {
+    it('should return the user balance converted from cents', async () => {
       const userId = '1';
       const user = new User();
       user.balance = 10000;
@@ -123,6 +128,30 @@ describe('WalletService', () => {
 
       expect(userWalletRepository.findById).toHaveBeenCalledWith(userId);
       expect(result).toEqual({ balance: 100 });
+    });
+
+    it('should throw Error if user not found', async () => {
+      jest.spyOn(userWalletRepository, 'findById').mockResolvedValue(null);
+
+      await expect(service.getBalance('999')).rejects.toThrow('User not found');
+    });
+  });
+
+  describe('reverse', () => {
+    it('should execute a reversal and return the transaction', async () => {
+      const userId = '1';
+      const transactionId = 'tx-1';
+      const transaction = new Transaction();
+      transaction.amount = 5000;
+
+      jest
+        .spyOn(reversalStrategy, 'execute')
+        .mockResolvedValue({ transactions: [transaction], events: [] });
+
+      const result = await service.reverse(userId, transactionId);
+
+      expect(reversalStrategy.execute).toHaveBeenCalled();
+      expect(result.transaction.amount).toBe(50);
     });
   });
 
@@ -144,6 +173,44 @@ describe('WalletService', () => {
         query,
       );
       expect(result.total).toEqual(total);
+    });
+  });
+
+  describe('executeTransaction error handling', () => {
+    it('should rollback transaction when strategy throws', async () => {
+      const error = new Error('strategy failed');
+      jest.spyOn(depositStrategy, 'execute').mockRejectedValue(error);
+
+      await expect(service.deposit('1', { amount: 100 })).rejects.toThrow(
+        'strategy failed',
+      );
+
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(queryRunner.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('publishEvents error handling', () => {
+    it('should catch event publish errors without throwing', async () => {
+      const transaction = new Transaction();
+      transaction.amount = 5000;
+
+      jest.spyOn(depositStrategy, 'execute').mockResolvedValue({
+        transactions: [transaction],
+        events: [{ event: 'deposit.completed', data: {} } as any],
+      });
+
+      jest
+        .spyOn(eventPublisher, 'publish')
+        .mockRejectedValue(new Error('RabbitMQ down'));
+
+      const result = await service.deposit('1', { amount: 100 });
+      expect(result.transaction).toBeDefined();
+
+      // Flush microtasks so the .catch() handler executes
+      await new Promise((resolve) => process.nextTick(resolve));
+
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
   });
 });

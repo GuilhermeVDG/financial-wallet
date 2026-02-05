@@ -16,6 +16,7 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: {
             login: jest.fn(),
+            getMe: jest.fn(),
           },
         },
       ],
@@ -50,6 +51,26 @@ describe('AuthController', () => {
 
       expect(result).toEqual(expectedResponse);
       expect(service.login).toHaveBeenCalledWith(loginDto);
+    });
+  });
+
+  describe('getMe', () => {
+    it('should return the user profile', async () => {
+      const req = { user: { id: '1' } };
+      const expectedResponse = {
+        id: '1',
+        name: 'Test User',
+        email: 'test@example.com',
+        balance: 1000,
+        createdAt: new Date(),
+      };
+
+      jest.spyOn(service, 'getMe').mockResolvedValue(expectedResponse);
+
+      const result = await controller.getMe(req);
+
+      expect(result).toEqual(expectedResponse);
+      expect(service.getMe).toHaveBeenCalledWith('1');
     });
   });
 });

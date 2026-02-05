@@ -18,6 +18,7 @@ describe('WalletController', () => {
           useValue: {
             deposit: jest.fn(),
             transfer: jest.fn(),
+            reverse: jest.fn(),
             getBalance: jest.fn(),
             getTransactions: jest.fn(),
           },
@@ -66,6 +67,23 @@ describe('WalletController', () => {
 
       expect(result).toEqual(expectedResponse);
       expect(service.transfer).toHaveBeenCalledWith('1', transferDto);
+    });
+  });
+
+  describe('reverse', () => {
+    it('should call walletService.reverse and return the result', async () => {
+      const req = { user: { id: '1' } };
+      const transactionId = 'tx-1';
+      const expectedResponse = {
+        transaction: { id: 'rev-1', type: 'REVERSAL' },
+      };
+
+      jest.spyOn(service, 'reverse').mockResolvedValue(expectedResponse as any);
+
+      const result = await controller.reverse(req, transactionId);
+
+      expect(result).toEqual(expectedResponse);
+      expect(service.reverse).toHaveBeenCalledWith('1', 'tx-1');
     });
   });
 

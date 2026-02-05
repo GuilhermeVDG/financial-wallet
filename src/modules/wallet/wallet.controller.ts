@@ -26,6 +26,11 @@ import { WalletService } from './wallet.service';
 import { DepositDto } from './dto/deposit.dto';
 import { TransferDto } from './dto/transfer.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
+import { BalanceResponseDto } from './dto/balance-response.dto';
+import {
+  SingleTransactionResponseDto,
+  PaginatedTransactionsResponseDto,
+} from './dto/transaction-response.dto';
 
 @ApiTags('Wallet')
 @ApiBearerAuth('JWT')
@@ -42,7 +47,10 @@ export class WalletController {
     summary: 'Consultar saldo',
     description: 'Retorna o saldo atual da carteira do usuario autenticado.',
   })
-  @ApiOkResponse({ description: 'Saldo retornado com sucesso.' })
+  @ApiOkResponse({
+    description: 'Saldo retornado com sucesso.',
+    type: BalanceResponseDto,
+  })
   getBalance(@Request() req: { user: { id: string } }) {
     return this.walletService.getBalance(req.user.id);
   }
@@ -53,7 +61,10 @@ export class WalletController {
     description:
       'Adiciona fundos a carteira. Bloqueado se o saldo estiver negativo.',
   })
-  @ApiCreatedResponse({ description: 'Deposito realizado com sucesso.' })
+  @ApiCreatedResponse({
+    description: 'Deposito realizado com sucesso.',
+    type: SingleTransactionResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Valor invalido.' })
   @ApiConflictResponse({ description: 'Saldo negativo impede depositos.' })
   deposit(@Request() req: { user: { id: string } }, @Body() dto: DepositDto) {
@@ -66,7 +77,10 @@ export class WalletController {
     description:
       'Transfere fundos para outro usuario. Operacao atomica que cria registros de debito e credito.',
   })
-  @ApiCreatedResponse({ description: 'Transferencia realizada com sucesso.' })
+  @ApiCreatedResponse({
+    description: 'Transferencia realizada com sucesso.',
+    type: SingleTransactionResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Dados invalidos.' })
   @ApiNotFoundResponse({ description: 'Destinatario nao encontrado.' })
   @ApiConflictResponse({
@@ -87,7 +101,10 @@ export class WalletController {
     description: 'UUID da transacao a ser revertida',
     format: 'uuid',
   })
-  @ApiCreatedResponse({ description: 'Reversao realizada com sucesso.' })
+  @ApiCreatedResponse({
+    description: 'Reversao realizada com sucesso.',
+    type: SingleTransactionResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'UUID invalido.' })
   @ApiNotFoundResponse({
     description: 'Transacao nao encontrada ou pertence a outro usuario.',
@@ -108,7 +125,10 @@ export class WalletController {
     description:
       'Lista as transacoes do usuario com paginacao e filtro por tipo (DEPOSIT, TRANSFER, REVERSAL).',
   })
-  @ApiOkResponse({ description: 'Lista de transacoes com paginacao.' })
+  @ApiOkResponse({
+    description: 'Lista de transacoes com paginacao.',
+    type: PaginatedTransactionsResponseDto,
+  })
   getTransactions(
     @Request() req: { user: { id: string } },
     @Query() query: TransactionQueryDto,

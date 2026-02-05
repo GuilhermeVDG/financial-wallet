@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserResponseDto } from './dto/create-user-response.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -26,6 +27,7 @@ export class UsersController {
   @ApiCreatedResponse({
     description:
       'Usuario criado com sucesso. Retorna dados do usuario e access_token.',
+    type: CreateUserResponseDto,
   })
   @ApiConflictResponse({ description: 'Email ja cadastrado.' })
   async create(@Body() dto: CreateUserDto) {

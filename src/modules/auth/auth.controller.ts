@@ -15,7 +15,9 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UserMeResponse } from '../../shared/swagger/user-profile.response';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -30,6 +32,7 @@ export class AuthController {
   @ApiOkResponse({
     description:
       'Login realizado com sucesso. Retorna dados do usuario e access_token.',
+    type: LoginResponseDto,
   })
   @ApiUnauthorizedResponse({ description: 'Credenciais invalidas.' })
   login(@Body() dto: LoginDto) {
@@ -43,7 +46,10 @@ export class AuthController {
     summary: 'Perfil do usuario',
     description: 'Retorna os dados do usuario autenticado, incluindo saldo.',
   })
-  @ApiOkResponse({ description: 'Dados do usuario autenticado.' })
+  @ApiOkResponse({
+    description: 'Dados do usuario autenticado.',
+    type: UserMeResponse,
+  })
   @ApiUnauthorizedResponse({
     description: 'Token ausente, invalido ou expirado.',
   })

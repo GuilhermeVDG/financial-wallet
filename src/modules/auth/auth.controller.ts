@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Request } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -16,8 +9,8 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UserMeResponse } from '../../shared/swagger/user-profile.response';
+import { PublicRoute } from '../../shared/decorators/public-route.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -25,6 +18,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @PublicRoute()
   @ApiOperation({
     summary: 'Login',
     description: 'Autentica o usuario e retorna um JWT.',
@@ -40,7 +34,6 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT')
   @ApiOperation({
     summary: 'Perfil do usuario',

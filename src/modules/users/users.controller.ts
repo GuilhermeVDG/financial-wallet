@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { CreateUserResponseDto } from './dto/create-user-response.dto';
+import { PublicRoute } from '../../shared/decorators/public-route.decorator';
 
 @ApiTags('Users')
 @Controller('users')
@@ -19,6 +20,7 @@ export class UsersController {
   ) {}
 
   @Post()
+  @PublicRoute()
   @ApiOperation({
     summary: 'Criar usuario',
     description:

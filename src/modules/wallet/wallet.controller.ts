@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   Query,
-  UseGuards,
   Request,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -21,7 +20,6 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WalletService } from './wallet.service';
 import { DepositDto } from './dto/deposit.dto';
 import { TransferDto } from './dto/transfer.dto';
@@ -38,7 +36,6 @@ import {
   description: 'Token ausente, invalido ou expirado.',
 })
 @Controller('wallet')
-@UseGuards(JwtAuthGuard)
 export class WalletController {
   constructor(private readonly walletService: WalletService) {}
 

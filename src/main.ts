@@ -1,18 +1,30 @@
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { CustomValidationPipe } from './shared/pipes/custom-validation.pipe';
+import { GlobalExceptionFilter } from './shared/filters/global-exception-filter';
+import { TimeoutInterceptor } from './shared/interceptors/timeout.interceptor';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   app.useGlobalPipes(
+    new CustomValidationPipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }),
   );
+
+  app.useGlobalInterceptors(
+    new TimeoutInterceptor(configService, new Reflector()),
+  );
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   const config = new DocumentBuilder()
     .setTitle('Financial Wallet API')
